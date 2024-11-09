@@ -20,7 +20,7 @@ import java.util.*;
 
 public class Bot extends TelegramLongPollingBot {
 
-    public Map<Long, List<String>> getHistory() {
+    private Map<Long, List<String>> getHistory() {
         return history;
     }
 
