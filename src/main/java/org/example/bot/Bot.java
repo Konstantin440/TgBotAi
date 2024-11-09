@@ -1,6 +1,6 @@
 package org.example.bot;
 
-
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.example.service.MessageService;
 import org.springframework.stereotype.Component;
@@ -69,6 +69,11 @@ public class Bot extends TelegramLongPollingBot {
         return messages != null && messages.size() == 30;
     }
 
+//    public static void resetTheNumberOfThreads(Long chatId) {
+//        if (history.containsKey(chatId)) {
+//            history.get(chatId).clear();
+//        }
+//    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -111,6 +116,7 @@ public class Bot extends TelegramLongPollingBot {
         }
 
     }
+
 
     @Override
     public String getBotUsername() {
