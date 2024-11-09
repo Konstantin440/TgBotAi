@@ -47,7 +47,7 @@ public class Bot extends TelegramLongPollingBot {
             }
         }
     }
-
+//TEST
     private void writeMessageToFile(Long id, String msg) {
         String currentDirectory = System.getProperty("user.dir");
         String filePath = currentDirectory + File.separator + "id_" + id + ".txt"; //как получить логин?
