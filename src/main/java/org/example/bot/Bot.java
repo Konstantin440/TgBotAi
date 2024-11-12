@@ -3,8 +3,7 @@ package org.example.bot;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.service.MessageService;
-import org.example.service.RateLimitService;
-import org.springframework.stereotype.Component;
+import org.example.service.quartz.RateLimitService;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -14,15 +13,10 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.time.LocalTime;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
-@Component
+
 
 public class Bot extends TelegramLongPollingBot {
 
@@ -75,10 +69,10 @@ public class Bot extends TelegramLongPollingBot {
     public void onUpdateReceived(Update update)   {
         Long chatId = update.getMessage().getChatId();
 
-        if (!rateLimitService.canMakeRequest(chatId)) {
+        if (rateLimitService.getLimit(chatId)>=2) {
             SendMessage message = new SendMessage();
             message.setChatId(update.getMessage().getChatId());
-            message.setText("Вы достигли лимита в 30 сообщений на сегодня. Попробуйте завтра c 8:00");
+            message.setText("Вы достигли лимита в 30 сообщений на сегодня. Попробуйте завтра c 8:00 или напише Косте!!!!$$$$$$$");
             try {
                 execute(message);
             } catch (TelegramApiException e) {
@@ -86,7 +80,11 @@ public class Bot extends TelegramLongPollingBot {
             }
             return;
 
+        }else {
+            rateLimitService.canMakeRequest(chatId); //если лимит не достигнут то увеличить его на 1
+            //добавить его в мап если его там нету а ели есть то сменить ему лемит на 1 больше текущего
         }
+
 
         System.out.println(update.getMessage().getMessageThreadId());
         MessageService messageService = new MessageService();
