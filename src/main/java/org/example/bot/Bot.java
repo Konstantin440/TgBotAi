@@ -3,6 +3,7 @@ package org.example.bot;
 
 import lombok.extern.slf4j.Slf4j;
 import org.example.service.MessageService;
+import org.example.service.RateLimitService;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -13,7 +14,12 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.LocalTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -26,6 +32,8 @@ public class Bot extends TelegramLongPollingBot {
 
     private Map<Long, List<String>> history = new HashMap<>();
 
+
+    private RateLimitService rateLimitService = new RateLimitService();
 
     public Bot(String botToken) {
         super(botToken);
@@ -47,7 +55,8 @@ public class Bot extends TelegramLongPollingBot {
             }
         }
     }
-//TEST1
+
+    //TEST1
     private void writeMessageToFile(Long id, String msg) {
         String currentDirectory = System.getProperty("user.dir");
         String filePath = currentDirectory + File.separator + "id_" + id + ".txt"; //как получить логин?
@@ -61,31 +70,22 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
-    public boolean countMessageInHistory(Long chatId) {
-        // Получаем список сообщений для данного chatId
-        List<String> messages = history.get(chatId);
-
-        // Проверяем, если список существует и его размер больше 5
-        return messages != null && messages.size() == 30;
-    }
-
 
     @Override
-    public void onUpdateReceived(Update update) {
-        Long id = update.getMessage().getChatId();
+    public void onUpdateReceived(Update update)   {
+        Long chatId = update.getMessage().getChatId();
 
-        if (countMessageInHistory(id)) {
-            SendMessage sendMessageFailled = new SendMessage();
-            sendMessageFailled.setChatId(id);
-            sendMessageFailled.setText("Вы достигли лимита в 30 сообщений на сегодня");
-
-
+        if (!rateLimitService.canMakeRequest(chatId)) {
+            SendMessage message = new SendMessage();
+            message.setChatId(update.getMessage().getChatId());
+            message.setText("Вы достигли лимита в 30 сообщений на сегодня. Попробуйте завтра c 8:00");
             try {
-                execute(sendMessageFailled);
+                execute(message);
             } catch (TelegramApiException e) {
                 throw new RuntimeException(e);
             }
             return;
+
         }
 
         System.out.println(update.getMessage().getMessageThreadId());
@@ -96,7 +96,7 @@ public class Bot extends TelegramLongPollingBot {
         String messageResponse = messageService.getMessageResponse(update.getMessage().getText());
         System.out.println("response " + messageResponse);
         addMessageInHistory(update);
-        writeMessageToFile(id, userMessage);
+        writeMessageToFile(chatId, userMessage);
 
 
         SendMessage sendMessage = new SendMessage();

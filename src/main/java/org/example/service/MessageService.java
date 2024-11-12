@@ -1,5 +1,10 @@
 package org.example.service;
 
+import java.time.LocalTime;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 public class MessageService {
     private OpenAiService openAiService;
 
@@ -43,4 +48,6 @@ public class MessageService {
         stringBuilder.append("Пример: *Массивы");
         return stringBuilder.toString();
     }
+
+
 }
