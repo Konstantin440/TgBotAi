@@ -63,8 +63,7 @@ public class Bot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
-
-
+    //dd
     @Override
     public void onUpdateReceived(Update update)   {
         Long chatId = update.getMessage().getChatId();
