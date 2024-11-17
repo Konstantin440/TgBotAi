@@ -60,7 +60,7 @@ public class Bot extends TelegramLongPollingBot {
             e.printStackTrace();
         }
     }
-
+//
     public boolean countMessageInHistory(Long chatId) {
         // Получаем список сообщений для данного chatId
         List<String> messages = history.get(chatId);
