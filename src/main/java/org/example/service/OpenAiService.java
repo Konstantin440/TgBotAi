@@ -17,17 +17,16 @@ public class OpenAiService {
     String model = "gpt-3.5-turbo"; // current model of chatgpt api
 
 
-    private final String PREFIX_TASK = "Напиши задачу на java без решения." +
-            "подробнее опиши по пунктам ход действий.Тема задачи: ";
+    private final String PREFIX_TASK = "Напиши задачу на java без решения. Ответ всегда начинай со слова \\\"задача\\\". " +
+            "Подробнее опиши по пунктам ход действий. Тема задачи: ";
 
 
-
-    public String getMessage(String typeMessage,String readyRequest) {
+    public String getMessage(String typeMessage, String readyRequest) {
         String responseAi = "";
         String requestForAi = "";
 
         switch (typeMessage) {
-            case "*" -> requestForAi = PREFIX_TASK +  readyRequest;
+            case "*" -> requestForAi = PREFIX_TASK + readyRequest;
             default -> requestForAi = readyRequest;
         }
 
@@ -37,50 +36,48 @@ public class OpenAiService {
     }
 
 
-
     public String sendRequest(String readyRequest) {
         try {
             URL objURL = new URL(url);
             HttpURLConnection con = (HttpURLConnection) objURL.openConnection();
 
             con.setRequestMethod("POST");
-
             con.setRequestProperty("Authorization", "Bearer " + apiKey);
             con.setRequestProperty("Content-Type", "application/json");
 
-            String name = "John";
+            // Формируем JSON
             String jsonString = getJsonString(model, readyRequest);
             con.setDoOutput(true);
 
-            con.setDoOutput(true);
             try (OutputStream os = con.getOutputStream()) {
                 byte[] input = jsonString.getBytes(StandardCharsets.UTF_8);
                 os.write(input, 0, input.length);
             }
 
-
+            // Проверяем код ответа
             int responseCode = con.getResponseCode();
-
             System.out.println("\nSending 'POST' request to URL : " + url);
             System.out.println("Post parameters : " + jsonString);
             System.out.println("Response Code : " + responseCode);
 
-            InputStream inputStream = con.getInputStream();
+            // Читаем ответ от API
+            InputStream inputStream = (responseCode == HttpURLConnection.HTTP_OK) ? con.getInputStream() : con.getErrorStream();
             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
-            String collectJson = br.lines()
-                    .collect(Collectors.joining("\n"));
+            String collectJson = br.lines().collect(Collectors.joining("\n"));
 
-
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                System.err.println("Ошибка: " + collectJson); // Выводим ошибку в консоль
+            }
 
             return getTextMessageFromJson(collectJson);
 
 
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
+
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
 
+        return null; // В случае ошибки вернуть null
     }
 
 
@@ -98,29 +95,22 @@ public class OpenAiService {
     }
 
 
-
-
-
-
-
-
-    private String getJsonString(String model,String message) {
+    private String getJsonString(String model, String message) {
         String body =
                 """
-                {
-                    "model": "%s",
-                    "messages": [
                         {
-                            "role": "user",
-                            "content": "%s"
+                            "model": "%s",
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": "%s"
+                                }
+                            ],
+                            "temperature": 0.7
                         }
-                    ],
-                    "temperature": 0.7
-                }
-                """.formatted(model,message).trim();
+                        """.formatted(model, message).trim();
         return body;
     }
-
 
 
 }
