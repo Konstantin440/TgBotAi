@@ -15,6 +15,12 @@ public class MessageService {
             return readyRequest;
         }
 
+        if (messageRequest.startsWith("$")) {
+            String readyRequest = generateTask("$",messageRequest);
+            return readyRequest;
+        }
+
+
         String responseMessage="";
         switch (messageRequest){
             case "/start"-> responseMessage = startText();
@@ -25,7 +31,7 @@ public class MessageService {
     }
 
 
-    private String generateTask(String type,String readyRequest) {
+    public String generateTask(String type,String readyRequest) {
 
         return openAiService.getMessage(type,readyRequest);
     }
