@@ -5,11 +5,13 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.example.model.ChatResponse;
 import org.example.service.MessageService;
+import org.example.service.quartz.RateLimitService;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.awt.*;
 import java.io.BufferedWriter;
@@ -22,6 +24,7 @@ import java.util.List;
 @Slf4j
 public class Bot extends TelegramLongPollingBot {
     private String messageResponse;
+    private RateLimitService rateLimitService = new RateLimitService();
     private Map<Long, List<String>> historyUser = new HashMap<>();
 
 
@@ -57,9 +60,30 @@ public class Bot extends TelegramLongPollingBot {
 
     public void onUpdateReceived(Update update) {
         boolean isThereAMessage = update.hasMessage() && update.getMessage() != null;
+        if (isThereAMessage) {
+
+        Long chatIdLimit = update.getMessage().getChatId();
+
+        if (rateLimitService.getLimit(chatIdLimit)>=2) {
+            SendMessage message = new SendMessage();
+            message.setChatId(update.getMessage().getChatId());
+            message.setText("Вы достигли лимита в 30 сообщений на сегодня. Попробуйте завтра c 8:00 или напише Косте!!!!$$$$$$$");
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+            return;
+
+        }else {
+            rateLimitService.canMakeRequest(chatIdLimit); //если лимит не достигнут то увеличить его на 1
+//добавить его в мап если его там нету а ели есть то сменить ему лемит на 1 больше текущего
+        }
+
+
 
         // Проверяем наличие сообщения
-        if (isThereAMessage) {
+
             boolean isText = update.getMessage().hasText();
 
             if (isText) {
@@ -162,8 +186,6 @@ public class Bot extends TelegramLongPollingBot {
 
 
 }
-
-
 
 
 
