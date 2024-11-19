@@ -1,19 +1,20 @@
 package org.example.bot;
 
-import lombok.Data;
+
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.example.model.ChatResponse;
+
 import org.example.service.MessageService;
 import org.example.service.quartz.RateLimitService;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
-import org.telegram.telegrambots.meta.api.objects.Message;
+
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
-import java.awt.*;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
@@ -30,6 +31,19 @@ public class Bot extends TelegramLongPollingBot {
 
     public Bot(String botToken) {
         super(botToken);
+
+    }
+
+    public void onUpdateReceived(Update update) {
+        System.out.println("update:"+update.hashCode());
+        //проверка на лимиты
+        if (isLimit(update)) return;
+
+        // Проверяем наличие сообщения
+        textHandler(update);
+
+        //проверка на нажатие на кнопку
+        isOnClickBtn(update);
 
     }
 
@@ -58,48 +72,9 @@ public class Bot extends TelegramLongPollingBot {
     }
 
 
-    public void onUpdateReceived(Update update) {
-        boolean isThereAMessage = update.hasMessage() && update.getMessage() != null;
-        if (isThereAMessage) {
-
-        Long chatIdLimit = update.getMessage().getChatId();
-
-        if (rateLimitService.getLimit(chatIdLimit)>=2) {
-            SendMessage message = new SendMessage();
-            message.setChatId(update.getMessage().getChatId());
-            message.setText("Вы достигли лимита в 30 сообщений на сегодня. Попробуйте завтра c 8:00 или напише Косте!!!!$$$$$$$");
-            try {
-                execute(message);
-            } catch (TelegramApiException e) {
-                throw new RuntimeException(e);
-            }
-            return;
-
-        }else {
-            rateLimitService.canMakeRequest(chatIdLimit); //если лимит не достигнут то увеличить его на 1
-//добавить его в мап если его там нету а ели есть то сменить ему лемит на 1 больше текущего
-        }
-
-
-
-        // Проверяем наличие сообщения
-
-            boolean isText = update.getMessage().hasText();
-
-            if (isText) {
-                Long id = update.getMessage().getChatId();
-                MessageService messageService = new MessageService();
-                String userMessage = update.getMessage().getText(); // то что ввел пользователь
-
-                // Получаем сообщение от сервиса
-                messageResponse = messageService.getMessageResponse(userMessage);
-                writeMessageToFile(id, messageResponse);
-                addMessageInHistory(update);
-                sendMessage(id, messageResponse);
-            }
-        }
+    private void isOnClickBtn(Update update) {
+        System.out.println("update:"+update.hashCode());
         boolean pressButton = update.hasCallbackQuery() && update.getCallbackQuery().getData() != null;
-
         if (pressButton) {
             Long chatId = update.getCallbackQuery().getMessage().getChatId(); // Получаем chatId из сообщения, связанного с кнопкой
             Integer idMsg = update.getCallbackQuery().getMessage().getMessageId();
@@ -110,7 +85,48 @@ public class Bot extends TelegramLongPollingBot {
         }
     }
 
+    private void textHandler(Update update) {
+        boolean isText = update.hasMessage() && update.getMessage() != null && update.getMessage().hasText();
+        if (!isText) {
+            return;
+        }
+        if (isText) {
+            Long id = update.getMessage().getChatId();
+            MessageService messageService = new MessageService();
+            String userMessage = update.getMessage().getText(); // то что ввел пользователь
+
+            // Получаем сообщение от сервиса
+            messageResponse = messageService.getMessageResponse(userMessage);
+            writeMessageToFile(id, messageResponse);
+            addMessageInHistory(update);
+            sendMessage(id, messageResponse);
+        }
+    }
+
+    private boolean isLimit(Update update) {
+        if (!(update.hasMessage() && update.getMessage().hasText())) return false;
+        Long chatIdLimit = update.getMessage().getChatId();
+
+        if (rateLimitService.getLimit(chatIdLimit) >= 12) {
+            SendMessage message = new SendMessage();
+            message.setChatId(update.getMessage().getChatId());
+            message.setText("Вы достигли лимита в 30 сообщений на сегодня. Попробуйте завтра c 8:00 или напише Косте!!!!$$$$$$$");
+            try {
+                execute(message);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+            return true;
+
+        } else {
+            rateLimitService.canMakeRequest(chatIdLimit); //если лимит не достигнут то увеличить его на 1
+//добавить его в мап если его там нету а ели есть то сменить ему лемит на 1 больше текущего
+        }
+        return false;
+    }
+
     public void sendEditMessage(Update update, Long chatId, Integer msgId, String messageResponse) {
+
         new Thread(() -> {
             try {
                 // Ждем обработки задачи
@@ -129,6 +145,7 @@ public class Bot extends TelegramLongPollingBot {
                 e.printStackTrace();
             }
         }).start();
+
     }
 
 
